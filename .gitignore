@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build and package output
+dist/
+*.tgz
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local environment and credentials
+.env
+.env.*
+.npmrc
+
+# CLI outputs written during local tests
+*.errors.txt
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,42 @@
+{
+    "name": "@aivax/cli",
+    "version": "1.1.0",
+    "description": "Command-line interface to operate an AIVAX account.",
+    "bin": {
+        "aivax": "src/cli.js"
+    },
+    "engines": {
+        "node": ">=22.19.0"
+    },
+    "files": [
+        "src",
+        "LICENSE"
+    ],
+    "license": "MIT",
+    "homepage": "https://docs.aivax.net/docs/cli.html",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/aivaxlabs/cli.git"
+    },
+    "bugs": {
+        "url": "https://github.com/aivaxlabs/cli/issues"
+    },
+    "keywords": [
+        "aivax",
+        "cli",
+        "rag",
+        "ocr",
+        "ai-gateway"
+    ],
+    "scripts": {
+        "start": "node src/cli.js"
+    },
+    "type": "module",
+    "dependencies": {
+        "@cantoo/pdf-lib": "^2.11.1",
+        "@napi-rs/keyring": "^2.1.2",
+        "mime": "^4.1.2",
+        "sharp": "^0.35.5",
+        "undici": "^8.12.3"
+    }
+}
