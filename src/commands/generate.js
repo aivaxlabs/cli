@@ -10,12 +10,15 @@ const documentsOptions = {
 };
 
 const image = {
-    description: "Generate images. Prints the image URLs.",
+    description: "Generate images. Prints the image URLs and the cost or error of each image.",
     options: {
         model: { alias: "m", value: "<model>", required: true, description: "Image model. See \"aivax models catalog image\"." },
         prompt: { alias: "p", value: "<text>", list: true, description: "Prompt. Repeatable. Also accepted as positional text." },
         count: { alias: "n", value: "<n>", number: true, description: "Images per prompt, from 1 to 4." },
-        reference: { value: "<url>", list: true, description: "HTTP(S) reference image URL. Repeatable." }
+        reference: { value: "<url>", list: true, description: "HTTP(S) reference image URL. Repeatable." },
+        size: { value: "<WxH>", description: "Output size, such as 1024x1024. Each side from 64 to 4096 pixels." },
+        format: { value: "<format>", description: "Output format: png, jpeg or webp. Defaults to the model output." },
+        quality: { value: "<n>", number: true, description: "Encoding quality from 1 to 100 for jpeg and webp." }
     },
     args: "[prompt]",
     async run(ctx) {
@@ -25,7 +28,15 @@ const image = {
             throw new UsageError("Provide a prompt with -p or positional text.");
         }
 
-        const body = { model: ctx.options.model, input, count: ctx.options.count, referenceImages: ctx.options.reference };
+        const body = {
+            model: ctx.options.model,
+            input,
+            count: ctx.options.count,
+            referenceImages: ctx.options.reference,
+            size: ctx.options.size,
+            format: ctx.options.format,
+            quality: ctx.options.quality
+        };
         await call(ctx, "POST", "/api/v1/generations/images", { body });
     }
 };
