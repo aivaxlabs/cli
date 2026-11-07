@@ -17,9 +17,12 @@ export default {
         },
         report: {
             description: "Show the monthly report with top-cost models, resources and SKUs.",
-            options: { month: { alias: "m", value: "<YYYY-MM>", description: "Reporting month. Defaults to the current month." } },
+            options: {
+                month: { alias: "m", value: "<YYYY-MM>", description: "Reporting month. Defaults to the current month." },
+                brl: { description: "Include usdBrlRate, the current USD to BRL exchange rate." }
+            },
             run: ctx => call(ctx, "GET", "/api/v1/information/usage/monthly-report", {
-                query: { month: ctx.options.month ?? new Date().toISOString().slice(0, 7) }
+                query: { month: ctx.options.month ?? new Date().toISOString().slice(0, 7), includeBrl: ctx.options.brl }
             })
         },
         resources: {

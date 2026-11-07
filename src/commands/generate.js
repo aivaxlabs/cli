@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { UsageError } from "../errors.js";
 import { call, fetchData, print } from "../http.js";
-import { base64, dataOption, documentParts, fileOption, payload, readJson, readSource, textDocuments, textOption } from "../input.js";
+import { base64, dataOption, dataUrl, documentParts, fileOption, isUrl, openFile, payload, readJson, readSource, textDocuments, textOption } from "../input.js";
 
 const documentsOptions = {
     file: fileOption("Document file or URL (text, image, PDF...). Repeatable."),
@@ -15,7 +15,7 @@ const image = {
         model: { alias: "m", value: "<model>", required: true, description: "Image model. See \"aivax models catalog image\"." },
         prompt: { alias: "p", value: "<text>", list: true, description: "Prompt. Repeatable. Also accepted as positional text." },
         count: { alias: "n", value: "<n>", number: true, description: "Images per prompt, from 1 to 4." },
-        reference: { value: "<url>", list: true, description: "HTTP(S) reference image URL. Repeatable." },
+        reference: { value: "<file|url>", list: true, description: "Reference image: local png, jpg, webp or gif file (up to 8 MB), HTTP(S) URL or data URI. Repeatable." },
         size: { value: "<WxH>", description: "Output size, such as 1024x1024. Each side from 64 to 4096 pixels." },
         format: { value: "<format>", description: "Output format: png, jpeg or webp. Defaults to the model output." },
         quality: { value: "<n>", number: true, description: "Encoding quality from 1 to 100 for jpeg and webp." }
@@ -28,11 +28,27 @@ const image = {
             throw new UsageError("Provide a prompt with -p or positional text.");
         }
 
+        const referenceImages = ctx.options.reference && await Promise.all(ctx.options.reference.map(async source => {
+            if (isUrl(source) || source.startsWith("data:")) {
+                return source;
+            }
+
+            if (!/\.(png|jpe?g|webp|gif)$/i.test(source)) {
+                throw new UsageError(`Unsupported reference image ${source}. Use a png, jpg, jpeg, webp or gif file.`);
+            }
+
+            if ((await openFile(source)).size > 8 * 1024 * 1024) {
+                throw new UsageError(`Reference image ${source} is larger than 8 MB.`);
+            }
+
+            return await dataUrl(source);
+        }));
+
         const body = {
             model: ctx.options.model,
             input,
             count: ctx.options.count,
-            referenceImages: ctx.options.reference,
+            referenceImages,
             size: ctx.options.size,
             format: ctx.options.format,
             quality: ctx.options.quality
