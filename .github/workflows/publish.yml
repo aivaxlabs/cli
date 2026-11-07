@@ -1,0 +1,42 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: npm dist-tag
+        required: true
+        default: latest
+      dry-run:
+        description: Simulate the publish without uploading
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Check version is not published
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@aivax/cli@$VERSION" version > /dev/null 2>&1; then
+            echo "::error::@aivax/cli@$VERSION is already published. Bump the version in package.json."
+            exit 1
+          fi
+
+      - run: npm publish --access public --provenance --tag "${{ inputs.tag }}" ${{ inputs.dry-run && '--dry-run' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
