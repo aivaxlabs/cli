@@ -17,11 +17,20 @@ const chat = {
         reasoningEffort: { value: "<level>", description: "Optional reasoning effort." },
         temperature: { value: "<n>", number: true, description: "Optional sampling temperature." },
         maxTokens: { value: "<n>", number: true, description: "Optional maximum completion tokens." },
-        user: { value: "<id>", description: "Optional external user identifier." }
+        user: { value: "<id>", description: "Optional external user identifier." },
+        conversationToken: {
+            value: "<id>",
+            description: "Conversation token, up to 128 characters. Send the same value in every request of a conversation to restore server-side tool calls and results and update the same stored conversation."
+        }
     },
     args: "[prompt]",
     async run(ctx) {
         const { options } = ctx;
+
+        if (options.conversationToken?.length > 128) {
+            throw new UsageError("--conversation-token must be 128 characters or less.");
+        }
+
         let messages = options.messages && await readJson(options.messages, "--messages");
 
         if (!messages) {
@@ -45,7 +54,8 @@ const chat = {
             reasoning_effort: options.reasoningEffort,
             temperature: options.temperature,
             max_completion_tokens: options.maxTokens,
-            user: options.user
+            user: options.user,
+            conversation_token: options.conversationToken
         };
 
         const response = await request(ctx, "POST", "/v1/chat/completions", { body, agentOutput: false });

@@ -13,6 +13,10 @@ const keys = {
             description: "List masked API keys and the account salt.",
             run: ctx => call(ctx, "GET", "/api/v1/accounts/api-key")
         },
+        applications: {
+            description: "List third-party applications authorized through OAuth. Revoke one with \"keys delete --id <id>\".",
+            run: ctx => call(ctx, "GET", "/api/v1/accounts/applications")
+        },
         create: {
             description: "Create an API key. The key is shown only once.",
             options: {
