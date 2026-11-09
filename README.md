@@ -140,7 +140,7 @@ PDFs are processed locally: large embedded images are recompressed as JPEG (max 
 | `skills` | list, get, create, patch, delete, import, export, clear, teach |
 | `logs` | account, gateway, batch |
 | `account` | update, keys (list, applications, create, delete), security, subscription, roll-salt, reset-login-key, notifications |
-| `generate` | image, speech, transcribe, describe, summarize, translate, extract, classify, segment, rerank, decide |
+| `generate` | image, speech, transcribe, describe, summarize, translate, extract, classify, segment, rerank, decide, refine |
 | `shell` | ls, stat, download, upload, publish, mkdir, rm, rmdir |
 | `api` | raw call to any endpoint |
 

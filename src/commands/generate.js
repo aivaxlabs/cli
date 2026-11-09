@@ -218,7 +218,57 @@ const decide = {
     }
 };
 
+const refinementViews = ["micro", "macro"];
+const refinementTypes = ["instruction", "prompt", "skill", "tool", "knowledge", "documentation"];
+
+const refine = {
+    description: "Review instructions, prompts, skills and tools. Prints a score, findings and suggested fixes.",
+    options: {
+        view: { value: "<view>", description: `Review depth: ${refinementViews.join(" or ")}. Defaults to micro.` },
+        purpose: { value: "<text>", description: "What the context is meant to achieve (text, @file or -)." },
+        context: { value: "<json>", description: `Array of { type, title?, description?, content } (JSON, @file or -). Types: ${refinementTypes.join(", ")}.` },
+        data: dataOption()
+    },
+    async run(ctx) {
+        const { view, purpose, context } = ctx.options;
+
+        if (view !== undefined && !refinementViews.includes(view)) {
+            throw new UsageError(`--view must be one of: ${refinementViews.join(", ")}.`);
+        }
+
+        if (ctx.options.data === undefined && context === undefined) {
+            throw new UsageError("Provide --context <json> or --data <json>.");
+        }
+
+        const items = context && await readJson(context, "--context");
+
+        if (items !== undefined) {
+            if (!Array.isArray(items) || !items.length) {
+                throw new UsageError("--context must be a non-empty JSON array.");
+            }
+
+            items.forEach((item, index) => {
+                if (!refinementTypes.includes(item?.type)) {
+                    throw new UsageError(`--context[${index}].type must be one of: ${refinementTypes.join(", ")}.`);
+                }
+
+                if (typeof item.content !== "string" || !item.content.trim()) {
+                    throw new UsageError(`--context[${index}].content must be a non-empty string.`);
+                }
+            });
+        }
+
+        const body = await payload(ctx, {
+            view,
+            purpose: purpose && await readSource(purpose),
+            context: items
+        });
+
+        await call(ctx, "POST", "/api/v1/generations/instruction-refinement", { body });
+    }
+};
+
 export default {
     description: "Media and text generation commands.",
-    commands: { image, speech, transcribe, describe, summarize, translate, extract, classify, segment, rerank, decide }
+    commands: { image, speech, transcribe, describe, summarize, translate, extract, classify, segment, rerank, decide, refine }
 };
