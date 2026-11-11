@@ -1,5 +1,6 @@
-import { call, seg } from "../http.js";
-import { dataOption, payload, readSource } from "../input.js";
+import { UsageError } from "../errors.js";
+import { call, events, print, request, seg } from "../http.js";
+import { dataOption, payload, readJson, readSource } from "../input.js";
 import { confirm } from "../prompt.js";
 import { crud, filterOption } from "./crud.js";
 
@@ -53,6 +54,8 @@ const sessions = {
     }
 };
 
+const integrationName = { alias: "n", value: "<name>", required: true, description: "Zapi, Telegram, EvolutionApi or Kapso." };
+
 const integrations = {
     description: "Messaging integration commands (Zapi, Telegram, EvolutionApi, Kapso).",
     commands: {
@@ -64,10 +67,18 @@ const integrations = {
         delete: {
             aliases: ["rm"],
             description: "Remove an integration.",
-            options: { client, name: { alias: "n", value: "<name>", required: true, description: "Zapi, Telegram, EvolutionApi or Kapso." } },
+            options: { client, name: integrationName },
             async run(ctx) {
                 await confirm(ctx, `Remove the ${ctx.options.name} integration?`);
                 await call(ctx, "DELETE", `${clientPath(ctx)}/integrations/${seg(ctx.options.name)}`);
+            }
+        },
+        "rotate-key": {
+            description: "Generate a new webhook hook key. The current webhook URL stops working immediately: update the URL in the provider and, for Telegram, update the bot hooks.",
+            options: { client, name: integrationName },
+            async run(ctx) {
+                await confirm(ctx, `Rotate the ${ctx.options.name} hook key? The current webhook URL stops working immediately.`);
+                await call(ctx, "POST", `${clientPath(ctx)}/integrations/${seg(ctx.options.name)}/hook-key`);
             }
         }
     }
@@ -104,6 +115,8 @@ const schedules = {
     }
 };
 
+const renderingModes = ["default", "textual_blocks"];
+
 const talk = {
     aliases: ["send"],
     description: "Send a prompt to a public chat session.",
@@ -112,17 +125,93 @@ const talk = {
         prompt: { alias: "p", value: "<text>", description: "Message text. Use @file or - to read it. Also accepted as positional text." },
         instructions: { value: "<text>", description: "Extra context for this inference only." },
         noCommit: { description: "Do not save this turn in the session history." },
+        stream: { description: "Stream the reply: text is printed as it is generated and tool activity goes to stderr. --verbose prints every event." },
+        tools: { value: "<json>", description: "OpenAI-compatible function tools for this inference only (JSON array, @file or -). Their calls are returned for your application to execute." },
+        reasoningEffort: { value: "<level>", description: "Reasoning effort for this inference, such as none, low, medium or high." },
+        renderingMode: { value: "<mode>", description: `${renderingModes.join(" or ")}. textual_blocks places reasoning and tool activity as text blocks in the reply.` },
+        toolExplanations: { description: "Ask the model to explain why it calls each server-side tool." },
         data: dataOption()
     },
     args: "[prompt]",
     async run(ctx) {
+        const { options } = ctx;
+
+        if (options.renderingMode !== undefined && !renderingModes.includes(options.renderingMode)) {
+            throw new UsageError(`--rendering-mode must be one of: ${renderingModes.join(", ")}.`);
+        }
+
+        const tools = options.tools && await readJson(options.tools, "--tools");
+
+        if (tools !== undefined && !(Array.isArray(tools) && tools.every(tool => typeof tool?.function?.name === "string"))) {
+            throw new UsageError("--tools must be a JSON array of OpenAI-compatible function tools, each with function.name.");
+        }
+
         const body = await payload(ctx, {
-            prompt: ctx.options.prompt ? await readSource(ctx.options.prompt) : ctx.args.join(" ") || undefined,
-            instructions: ctx.options.instructions,
-            commit: ctx.options.noCommit ? false : undefined
+            prompt: options.prompt ? await readSource(options.prompt) : ctx.args.join(" ") || undefined,
+            instructions: options.instructions,
+            commit: options.noCommit ? false : undefined,
+            stream: options.stream || undefined,
+            tools
         });
 
-        await call(ctx, "POST", `${publicPath(ctx)}/prompt`, { body });
+        const inferenceOptions = Object.entries({
+            reasoningEffort: options.reasoningEffort,
+            renderingMode: options.renderingMode,
+            toolInvocationExplanations: options.toolExplanations
+        }).filter(([, value]) => value !== undefined);
+
+        if (inferenceOptions.length) {
+            body.inferenceOptions = { ...body.inferenceOptions, ...Object.fromEntries(inferenceOptions) };
+        }
+
+        if (body.stream !== true) {
+            await call(ctx, "POST", `${publicPath(ctx)}/prompt`, { body });
+            return;
+        }
+
+        const response = await request(ctx, "POST", `${publicPath(ctx)}/prompt`, { body, agentOutput: false });
+        let result;
+        let written = false;
+
+        for await (const data of events(response)) {
+            const { type, data: event = {} } = JSON.parse(data);
+
+            if (options.verbose) {
+                print(data);
+            }
+
+            if (type === "error") {
+                if (written) process.stdout.write("\n");
+                throw new Error(event.message ?? "The prompt stream failed.");
+            }
+
+            if (type === "result") {
+                result = event;
+            }
+
+            if (options.verbose) continue;
+
+            if (type === "text" && event.content) {
+                process.stdout.write(`${event.replace && written ? "\n" : ""}${event.content}`);
+                written = true;
+            }
+
+            if (type === "tool") {
+                process.stderr.write(`› ${event.toolName} (${event.update})\n`);
+            }
+        }
+
+        if (!result) {
+            throw new Error("The prompt stream ended without a result.");
+        }
+
+        if (options.verbose) return;
+
+        if (written) process.stdout.write("\n");
+
+        if (result.toolCalls?.length) {
+            print({ toolCalls: result.toolCalls });
+        }
     }
 };
 
