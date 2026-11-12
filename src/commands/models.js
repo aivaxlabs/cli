@@ -24,6 +24,7 @@ export default {
             description: `Show a detailed catalog with pricing: ${Object.keys(catalogs).join(", ")}.`,
             args: "<type>",
             minArgs: 1,
+            options: { name: { alias: "q", value: "<name>", description: "Exact model name or dated snapshot. Only for the chat catalog." } },
             run(ctx) {
                 const path = catalogs[ctx.args[0]];
 
@@ -31,7 +32,11 @@ export default {
                     throw new UsageError(`Unknown catalog "${ctx.args[0]}". Use one of: ${Object.keys(catalogs).join(", ")}.`);
                 }
 
-                return call(ctx, "GET", path);
+                if (ctx.options.name !== undefined && ctx.args[0] !== "chat") {
+                    throw new UsageError("--name is only supported by the chat catalog.");
+                }
+
+                return call(ctx, "GET", path, { query: { name: ctx.options.name } });
             }
         }
     }
