@@ -200,19 +200,31 @@ const rerank = {
 };
 
 const decide = {
-    description: "Evaluate semantic decisions (noul, choice, score) over a state.",
+    description: "Evaluate semantic decisions (noul, choice, score) over a state or a conversation input.",
     options: {
         model: { alias: "m", value: "<model>", description: "Semantic decision model." },
-        state: { value: "<json>", description: "JSON state (JSON, @file or -)." },
+        state: { value: "<json>", description: "JSON state (JSON, @file or -). Not combinable with --input." },
+        input: { value: "<json>", description: "Array of OpenAI-style messages (JSON, @file or -). Media parts are sent as media. Not combinable with --state." },
         questions: { value: "<json>", description: "Questions object (JSON, @file or -)." },
         data: dataOption()
     },
     async run(ctx) {
+        const input = ctx.options.input && await readJson(ctx.options.input, "--input");
+
+        if (input !== undefined && (!Array.isArray(input) || !input.length)) {
+            throw new UsageError("--input must be a non-empty JSON array of messages.");
+        }
+
         const body = await payload(ctx, {
             model: ctx.options.model,
             state: ctx.options.state && await readJson(ctx.options.state, "--state"),
+            input,
             questions: ctx.options.questions && await readJson(ctx.options.questions, "--questions")
         });
+
+        if (body.input !== undefined && body.state !== undefined) {
+            throw new UsageError("Use either input or state, not both.");
+        }
 
         await call(ctx, "POST", "/api/v1/generations/decisions", { body });
     }
