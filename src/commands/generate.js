@@ -112,11 +112,19 @@ const describe = {
     description: "Describe media (images, audio, video, documents) as text.",
     options: {
         ...documentsOptions,
-        preset: { value: "<preset>", description: "auto (default) or high." },
-        guidance: { alias: "g", value: "<text>", description: "Extraction guidance." }
+        imageEngine: { value: "<engine>", description: "InferenceLow (default), InferenceHigh or Ocr." },
+        audioEngine: { value: "<engine>", description: "InferenceLow (default), InferenceHigh or Stt." },
+        videoEngine: { value: "<engine>", description: "InferenceLow (default) or InferenceHigh." },
+        fileEngine: { value: "<engine>", description: "InferenceLow (default), InferenceHigh or Ocr." },
+        guidance: { alias: "g", value: "<text>", description: "Extraction guidance. Ignored by Ocr and Stt." }
     },
     async run(ctx) {
-        const body = { input: await documentParts(ctx), preset: ctx.options.preset, extractionGuidance: ctx.options.guidance };
+        const { imageEngine, audioEngine, videoEngine, fileEngine } = ctx.options;
+        const body = {
+            input: await documentParts(ctx),
+            options: { imageEngine, audioEngine, videoEngine, fileEngine },
+            extractionGuidance: ctx.options.guidance
+        };
         await call(ctx, "POST", "/api/v1/generations/descriptions", { body });
     }
 };
