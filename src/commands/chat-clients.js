@@ -1,6 +1,6 @@
 import { UsageError } from "../errors.js";
 import { call, events, print, request, seg } from "../http.js";
-import { dataOption, payload, readJson, readSource } from "../input.js";
+import { dataOption, payload, readContent, readJson, readSource } from "../input.js";
 import { confirm } from "../prompt.js";
 import { crud, filterOption } from "./crud.js";
 
@@ -40,6 +40,37 @@ const sessions = {
                 });
 
                 await call(ctx, "POST", `${clientPath(ctx)}/sessions`, { body });
+            }
+        },
+        insert: {
+            description: "Append messages to a session history without running inference. Fails with 409 while an inference is in progress.",
+            options: {
+                client,
+                session: { alias: "s", value: "<id>", description: "Session identifier. Use this or --tag." },
+                tag: { alias: "t", value: "<tag>", description: "Session tag (external user id). Use this or --session." },
+                messages: {
+                    alias: "m",
+                    value: "<json|text>",
+                    description: "Plain text (inserted as a user message), an OpenAI-compatible message or an ordered array of user, assistant or tool messages. Use @file or - to read it."
+                },
+                data: dataOption()
+            },
+            async run(ctx) {
+                const body = await payload(ctx, {
+                    sessionId: ctx.options.session,
+                    tag: ctx.options.tag,
+                    messages: ctx.options.messages && await readContent(ctx.options.messages, "--messages")
+                });
+
+                if ((body.sessionId === undefined) === (body.tag === undefined)) {
+                    throw new UsageError("Provide exactly one of --session or --tag.");
+                }
+
+                if (body.messages === undefined) {
+                    throw new UsageError("Provide the messages to insert with --messages.");
+                }
+
+                await call(ctx, "POST", `${clientPath(ctx)}/sessions/insert-message`, { body });
             }
         },
         delete: {
@@ -123,7 +154,11 @@ const talk = {
     options: {
         accessKey,
         prompt: { alias: "p", value: "<text>", description: "Message text. Use @file or - to read it. Also accepted as positional text." },
-        instructions: { value: "<text>", description: "Extra context for this inference only." },
+        instructions: { value: "<text>", description: "Extra system instructions for this inference only." },
+        context: {
+            value: "<json|text>",
+            description: "Disposable information for this inference only, prepended to the last user message and never saved in the history, not even with commit. Plain text, an OpenAI-compatible content part or an array of them (@file or -). Unlike --instructions, it does not change the system instructions and is meant for information, not instructions."
+        },
         noCommit: { description: "Do not save this turn in the session history." },
         stream: { description: "Stream the reply: text is printed as it is generated and tool activity goes to stderr. --verbose prints every event." },
         tools: { value: "<json>", description: "OpenAI-compatible function tools for this inference only (JSON array, @file or -). Their calls are returned for your application to execute." },
@@ -149,6 +184,7 @@ const talk = {
         const body = await payload(ctx, {
             prompt: options.prompt ? await readSource(options.prompt) : ctx.args.join(" ") || undefined,
             instructions: options.instructions,
+            context: options.context && await readContent(options.context, "--context"),
             commit: options.noCommit ? false : undefined,
             stream: options.stream || undefined,
             tools
