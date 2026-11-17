@@ -40,6 +40,21 @@ export async function readJson(value, flag = "--data") {
     }
 }
 
+export async function readContent(value, flag) {
+    const text = await readSource(value);
+
+    if (!/^\s*[[{]/.test(text)) {
+        return text;
+    }
+
+    try {
+        return JSON.parse(text);
+    }
+    catch (error) {
+        throw new UsageError(`${flag} is not valid JSON: ${error.message}`);
+    }
+}
+
 export async function payload(ctx, fields = {}) {
     const data = ctx.options.data === undefined ? {} : await readJson(ctx.options.data);
     const defined = Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));

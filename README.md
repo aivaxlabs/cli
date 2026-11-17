@@ -87,6 +87,8 @@ aivax batch jobs export -w <workflow> -j <job> -o resultados.jsonl
 aivax generate speech -m <model> -t @roteiro.txt -o narracao.mp3
 aivax conversations list -g <gateway> --minutes 60
 aivax chat-clients talk -k <access-key> "Qual o status do meu pedido?" --stream --reasoning-effort low
+aivax chat-clients talk -k <access-key> "Posso trocar o tamanho?" --context @pedido.txt
+aivax chat-clients sessions insert -c <client> -t <tag> -m '[{"role":"assistant","content":"Seu pedido foi enviado."}]'
 aivax tests evaluate -m checkout-gateway -g @objetivo.txt -c "Valide se o assistente confirma o total" --max-turns 6 -q high
 aivax tests runs get --id <test> --run <run> --stream
 aivax analytics balance
@@ -130,7 +132,7 @@ PDFs are processed locally: large embedded images are recompressed as JPEG (max 
 | `docs` | guide, reference, search, setup |
 | `gateways` | list, get, create, patch, delete, chat |
 | `rag` | search, similar, answer, collections (list, get, create, patch, delete, export, reset, reindex, transactions, dedup), documents (list, get, upsert, delete), import |
-| `chat-clients` | list, get, create, patch, delete, sessions, integrations (set, delete, rotate-key), schedules, talk, session |
+| `chat-clients` | list, get, create, patch, delete, sessions (list, create, insert, delete), integrations (set, delete, rotate-key), schedules, talk, session |
 | `models` | list, catalog |
 | `batch` | workflows (CRUD), jobs (list, get, create, patch, start, pause, finish, delete, export), items (import, list, get, patch, delete, retry) |
 | `tests` | list, get, create, patch, delete, run, runs (list, get, cancel), evaluate |
