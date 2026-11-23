@@ -4,7 +4,7 @@ import { Agent, fetch as fetchWithoutTimeouts } from "undici";
 import { ApiError, UsageError } from "./errors.js";
 import { defaultEndpoint, resolveSession } from "./profiles.js";
 
-export const VERSION = "1.1";
+export const VERSION = "1.2";
 
 export const seg = encodeURIComponent;
 
