@@ -1,4 +1,4 @@
-import { call, seg } from "../http.js";
+import { call, output, request, seg } from "../http.js";
 import { confirm } from "../prompt.js";
 
 const id = { value: "<id>", required: true, description: "Conversation identifier." };
@@ -18,6 +18,9 @@ const exportQuery = ctx => ({
 });
 
 const filters = {
+    id: "--id",
+    token: "--token",
+    requestId: "--rid",
     model: "--model",
     user: "--user",
     apiKey: "--api-key",
@@ -31,28 +34,33 @@ export default {
     commands: {
         list: {
             aliases: ["ls"],
-            description: "List recent conversations.",
+            description: "List the most recent conversations of a period, up to 300 without filters or 1,000 with them. Filters apply to the whole period before the limit.",
             options: {
                 minutes: { value: "<n>", number: true, description: "Lookback window in minutes (default 120)." },
                 from: { value: "<date>", description: "ISO 8601 start date." },
                 to: { value: "<date>", description: "ISO 8601 end date." },
+                search: { alias: "s", value: "<text>", description: "Free text matched against messages, model, provider, user, conversation ID, token and request ID." },
+                id: { alias: "i", value: "<id>", description: "Filter by conversation ID (partial match)." },
+                token: { alias: "t", value: "<token>", description: "Filter by conversation token (partial match)." },
+                requestId: { alias: "r", value: "<id>", description: "Filter by request ID (partial match)." },
                 model: { alias: "m", value: "<model>", description: "Filter by model." },
                 user: { alias: "u", value: "<id>", description: "Filter by external user." },
                 apiKey: { value: "<id>", description: "Filter by API key." },
                 gateway: { alias: "g", value: "<id>", description: "Filter by AI gateway." },
                 chatClient: { value: "<id>", description: "Filter by chat client." },
                 chatSession: { value: "<id>", description: "Filter by chat session." },
-                filter: { value: "<expr>", description: "Raw filter expression, e.g. \"--gateway <id> -u joe\"." }
+                filter: { value: "<expr>", description: "Raw filter expression, e.g. \"--gateway <id> -u joe refund\"." }
             },
-            run(ctx) {
+            async run(ctx) {
                 const expression = [
                     ...Object.entries(filters)
                         .filter(([key]) => ctx.options[key])
                         .map(([key, flag]) => `${flag} ${JSON.stringify(ctx.options[key])}`),
-                    ctx.options.filter
+                    ctx.options.filter,
+                    ctx.options.search && JSON.stringify(ctx.options.search)
                 ].filter(Boolean).join(" ");
 
-                return call(ctx, "GET", "/api/v1/conversations", {
+                const response = await request(ctx, "GET", "/api/v1/conversations", {
                     query: {
                         offsetminutes: ctx.options.minutes,
                         timeStart: ctx.options.from,
@@ -60,6 +68,13 @@ export default {
                         filter: expression
                     }
                 });
+                const limit = response.headers.get("x-results-truncated");
+
+                await output(ctx, response);
+
+                if (limit) {
+                    process.stderr.write(`Showing the ${limit} most recent conversations. Narrow --from/--to or add filters to see older ones.\n`);
+                }
             }
         },
         get: {
