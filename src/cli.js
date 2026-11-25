@@ -5,6 +5,7 @@ import { VERSION } from "./http.js";
 import account from "./commands/account.js";
 import analytics from "./commands/analytics.js";
 import api from "./commands/api.js";
+import asyncGenerations from "./commands/async-generations.js";
 import auth from "./commands/auth.js";
 import batch from "./commands/batch.js";
 import chatClients from "./commands/chat-clients.js";
@@ -30,6 +31,7 @@ const root = {
         "chat-clients": chatClients,
         models,
         batch,
+        "async-generations": asyncGenerations,
         tests,
         web,
         ocr,
