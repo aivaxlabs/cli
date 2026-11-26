@@ -28,7 +28,25 @@ export default {
             return [value.slice(0, index).trim(), value.slice(index + 1).trim()];
         };
 
-        await call(ctx, upper, path.startsWith("/") ? path : `/${path}`, {
+        let route = path.startsWith("/") ? path : `/${path}`;
+
+        // Quick fix: Git Bash (MSYS) rewrites "/api/..." into "C:/<git>/api/..." before Node receives it.
+        // The route is recovered from the first "/api/" or "/v1/" segment, so routes with other prefixes fail.
+        // The real fix is on the caller side (MSYS_NO_PATHCONV=1 or "api/..."), since the original argument is lost.
+        if (/^\/?[A-Za-z]:[\\/]/.test(path)) {
+            const index = path.search(/\/(api|v1)\//);
+
+            if (index < 0) {
+                throw new UsageError(
+                    `Path "${path}" looks like a Windows path. Git Bash converts arguments starting with "/" into paths; `
+                    + `run with MSYS_NO_PATHCONV=1 or write the route without the leading slash ("api/...").`
+                );
+            }
+
+            route = path.slice(index);
+        }
+
+        await call(ctx, upper, route, {
             body: ctx.options.data === undefined ? undefined : await readJson(ctx.options.data),
             query: Object.fromEntries((ctx.options.query ?? []).map(value => split(value, "="))),
             headers: Object.fromEntries((ctx.options.header ?? []).map(value => split(value, ":")))
