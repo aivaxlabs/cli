@@ -86,6 +86,9 @@ aivax batch jobs start -w <workflow> -j <job>
 aivax batch jobs export -w <workflow> -j <job> -o resultados.jsonl
 aivax generate speech -m <model> -t @roteiro.txt -o narracao.mp3
 aivax conversations list -g <gateway> --minutes 60
+aivax api post api/v1/generations/images -d '{"model":"<model>","input":["Um farol ao entardecer"],"async":{"tags":["farol"]}}'
+aivax async list --status done --tags farol
+aivax async response --id <generation> -o resultado.json
 aivax chat-clients talk -k <access-key> "Qual o status do meu pedido?" --stream --reasoning-effort low
 aivax chat-clients talk -k <access-key> "Posso trocar o tamanho?" --context @pedido.txt
 aivax chat-clients sessions insert -c <client> -t <tag> -m '[{"role":"assistant","content":"Seu pedido foi enviado."}]'
@@ -121,6 +124,7 @@ PDFs are processed locally: large embedded images are recompressed as JPEG (max 
 - **Files**: commands that send content accept `-f <file>` (repeatable). Media is sent as base64 data URLs or uploaded in multipart/chunks, as each endpoint requires.
 - **Output**: responses are requested with `X-Response-Truncating: agent-optimized` (compact TOON text). `--verbose` returns the full JSON. Export and download commands accept `-o <file>`.
 - **Long inference**: AI calls (chat completions, `/api/v1/generations/*`, `query`, `answer`, `web/fetch` and chat-client prompts) go to `direct.inference.aivax.net`, which has no proxy timeout, with a 20-minute client timeout.
+- **Async generations**: generation endpoints accept `"async": true`, or `"async": { "tags": [...], "webhooks": [...], "timeout": <seconds> }`, in the body and return the queued generation ID. Send it with `-d` where the command accepts it (`generate decide`) or with `aivax api post <route> -d`, then follow it with `aivax async-generations` (alias `async`). It cannot be combined with `stream` or used with public API keys.
 - **Confirmation**: delete, reset, clear, roll-salt and similar commands ask for confirmation; `--yes` skips it, and non-interactive sessions require it.
 - **Exit codes**: `0` success, `1` API or runtime error, `2` usage error.
 
@@ -135,6 +139,7 @@ PDFs are processed locally: large embedded images are recompressed as JPEG (max 
 | `chat-clients` | list, get, create, patch, delete, sessions (list, create, insert, delete), integrations (set, delete, rotate-key), schedules, talk, session |
 | `models` | list, catalog |
 | `batch` | workflows (CRUD), jobs (list, get, create, patch, start, pause, finish, delete, export), items (import, list, get, patch, delete, retry) |
+| `async-generations` (`async`) | list, get, response, cancel, delete |
 | `tests` | list, get, create, patch, delete, run, runs (list, get, cancel), evaluate |
 | `web` | search, fetch |
 | `ocr` | parse, document |

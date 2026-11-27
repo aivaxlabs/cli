@@ -25,6 +25,11 @@ Output
 Destructive commands
   Delete, reset, clear and similar commands ask for confirmation. Pass --yes to skip it.
 
+Async generations
+  Add "async": true, or {"tags":[...],"webhooks":[...],"timeout":<s>}, to a generation body to queue it.
+  aivax api post api/v1/generations/<route> -d '{..., "async": true}'
+  aivax async list | get --id <id> | response --id <id> [-o file] | cancel | delete
+
 Raw access
   aivax api <METHOD> <path> [-d body]    Calls any endpoint not covered by a dedicated command.
 
