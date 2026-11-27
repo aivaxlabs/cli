@@ -98,6 +98,8 @@ aivax analytics balance
 aivax api get /api/v1/notifications/unread/count
 ```
 
+In Git Bash, `aivax api` arguments starting with `/` are rewritten into Windows paths (`C:/Program Files/Git/api/...`) before reaching the CLI. The CLI recovers routes that start with `/api/` or `/v1/`; for any other route, run with `MSYS_NO_PATHCONV=1` or drop the leading slash (`api/...`).
+
 Every verb and command prints its options with `--help`. `aivax docs guide` summarizes the conventions, and `aivax docs reference <Endpoint>` shows the API reference of one endpoint.
 
 ## 📄 Transcribing documents locally
@@ -205,7 +207,7 @@ Update `VERSION` in `src/http.js` to match, since it is sent in the `User-Agent`
 | `The access key of profile "…" is missing from the system credential store` | Run `aivax auth login` again. Profiles saved by the Bun-based 1.0.x releases use a different credential format and must be linked again once. |
 | Credential store errors on Linux | Make sure a Secret Service provider (GNOME Keyring or KWallet) is running and unlocked, or use `AIVAX_API_KEY`. |
 | `aivax: command not found` | Add npm's global bin folder (`npm prefix -g`, plus `/bin` outside Windows) to `PATH`. |
-| `aivax api get /api/...` returns 404 in Git Bash | Git Bash rewrites arguments that start with `/`. Run with `MSYS_NO_PATHCONV=1` or drop the leading slash (`api/v1/...`). |
+| `aivax api` fails with `looks like a Windows path` in Git Bash | Git Bash rewrites arguments that start with `/`. Run with `MSYS_NO_PATHCONV=1` or drop the leading slash (`api/v1/...`). |
 | `… requires an interactive terminal` | Pass the value through its flag, for example `--login-key` and `--2fa`, or `--yes` for confirmations. |
 
 ## 🤝 Contributing
